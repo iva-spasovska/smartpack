@@ -1,5 +1,7 @@
 from rest_framework import serializers
-from .models import PackingItem, TripPackingItem
+from .models import PackingItem, TripPackingItem, UserPackingList
+from ..trips.models import Trip
+
 
 class PackingItemSerializer(serializers.ModelSerializer):
     class Meta:
@@ -38,3 +40,48 @@ class TripPackingItemSerializer(serializers.ModelSerializer):
                 )
 
         return attrs
+
+
+class UserPackingListSerializer(serializers.ModelSerializer):
+    trip_id = serializers.IntegerField(write_only=True)
+    trip_name = serializers.CharField(source='trip.name', read_only=True)
+    destination = serializers.CharField(source='trip.destination', read_only=True)
+
+    class Meta:
+        model = UserPackingList
+        fields = ['id', 'trip_id', 'trip_name', 'destination', 'items', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+
+    def validate_trip_id(self, value):
+        user = self.context['request'].user
+
+        try:
+            trip = Trip.objects.get(id=value, user=user)
+        except Trip.DoesNotExist:
+            raise serializers.ValidationError("Trip not found or does not belong to you")
+
+        return value
+
+    def validate_items(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Items must be a list")
+
+        for item in value:
+            required_fields = ['id', 'name', 'quantity', 'is_checked']
+            for field in required_fields:
+                if field not in item:
+                    raise serializers.ValidationError(f"Each item must have '{field}' field")
+
+        return value
+
+    def create(self, validated_data):
+        trip_id = validated_data.pop('trip_id')
+        trip = Trip.objects.get(id=trip_id)
+
+        # Create or update
+        user_list, created = UserPackingList.objects.update_or_create(
+            trip=trip,
+            defaults={'items': validated_data['items']}
+        )
+
+        return user_list
