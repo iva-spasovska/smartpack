@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.serializers import ValidationError
 from .models import Trip
 from .serializers import TripSerializer
-from datetime import timezone
+from django.utils import timezone
 
 # Create your views here.
 class TripViewSet(ModelViewSet):

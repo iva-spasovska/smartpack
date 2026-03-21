@@ -17,7 +17,13 @@ class PackingRecommendationViewSet(ReadOnlyModelViewSet):
         )
 
     def retrieve(self, request, pk=None):
-        trip = Trip.objects.get(id=pk, user=request.user)
+        try:
+            trip = Trip.objects.get(id=pk, user=request.user)
+        except Trip.DoesNotExist:
+            return Response(
+                {'error': 'Trip not found'},
+                status=404
+            )
         rec = MLService.generate_recommendation(trip)
         serializer = PackingRecommendationSerializer(rec)
         return Response(serializer.data)
