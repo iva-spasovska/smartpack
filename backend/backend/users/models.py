@@ -5,6 +5,11 @@ from datetime import date
 class UserProfile(AbstractUser):
     # inherits username, email, password, etc.
     date_of_birth = models.DateField(null=True, blank=True)
+    profile_photo = models.FileField(
+        upload_to='profile_photos/',
+        null=True,
+        blank=True
+    )
     GENDER_CHOICES = (
         ('male', 'Male'),
         ('female', 'Female'),
