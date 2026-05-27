@@ -1,5 +1,6 @@
 import requests
 from django.conf import settings
+from django.utils import timezone
 
 from .models import WeatherSnapshot
 
@@ -31,6 +32,7 @@ class WeatherService:
                 "wind_speed": data["wind"]["speed"],
                 "condition": data["weather"][0]["main"].lower(),
                 "api_source": "openweathermap",
+                "fetched_at": timezone.now(),
             }
         )
         return weather
