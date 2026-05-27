@@ -4,6 +4,6 @@ from .views import PackingItemViewSet, TripPackingItemViewSet, UserPackingListVi
 router = DefaultRouter()
 router.register(r'items', PackingItemViewSet, basename='packingitem')
 router.register(r'trip-items', TripPackingItemViewSet, basename='trippackingitem')
-router.register(r'user-list', UserPackingListViewSet, basename='user-packing-list')  # ✅ Add this
+router.register(r'user-list', UserPackingListViewSet, basename='user-packing-list')
 
 urlpatterns = router.urls
