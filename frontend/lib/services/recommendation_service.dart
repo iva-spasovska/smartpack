@@ -8,7 +8,7 @@ import 'api_client.dart';
 class RecommendationService {
   Future<PackingRecommendation?> getRecommendationForTrip(int tripId) async {
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/ml/$tripId/'),
+      Uri.parse('${ApiConfig.mlUrl}$tripId/'),
       headers: await ApiClient.authHeaders(),
     );
 

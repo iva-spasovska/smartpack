@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../models/trip.dart';
 import '../models/packing_item.dart';
+import '../models/trip.dart';
 import '../models/weather_snapshot.dart';
-import '../services/weather_service.dart';
-import '../services/recommendation_service.dart';
 import '../services/packing_list_service.dart';
+import '../services/recommendation_service.dart';
+import '../services/trip_service.dart';
+import '../services/weather_service.dart';
 import '../widgets/packing_category_section.dart';
 
 class PackingListScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _PackingListScreenState extends State<PackingListScreen> {
   static const Color darkBlue = Color(0xFF2F4858);
   static const Color primaryColor = Color(0xFF4F8D9C);
   static const Color cardColor = Color(0xFFE8F3F7);
+  static const Color softMint = Color(0xFFC7DDE8);
 
   bool isLoading = true;
   bool isSaving = false;
@@ -43,11 +45,13 @@ class _PackingListScreenState extends State<PackingListScreen> {
 
   Future<void> loadPackingData() async {
     try {
-      final loadedWeather =
-          await WeatherService().getWeatherForTrip(widget.trip.id);
+      final loadedWeather = await WeatherService().getWeatherForTrip(
+        widget.trip.id,
+      );
 
-      final savedList =
-          await PackingListService().getUserPackingList(widget.trip.id);
+      final savedList = await PackingListService().getUserPackingList(
+        widget.trip.id,
+      );
 
       if (savedList != null && savedList.items.isNotEmpty) {
         setState(() {
@@ -58,8 +62,8 @@ class _PackingListScreenState extends State<PackingListScreen> {
         return;
       }
 
-      final recommendation =
-          await RecommendationService().getRecommendationForTrip(widget.trip.id);
+      final recommendation = await RecommendationService()
+          .getRecommendationForTrip(widget.trip.id);
 
       setState(() {
         weather = loadedWeather;
@@ -67,12 +71,11 @@ class _PackingListScreenState extends State<PackingListScreen> {
         isLoading = false;
       });
     } catch (e) {
-      setState(() => isLoading = false);
-
       if (!mounted) return;
 
+      setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to load packing list')),
+        const SnackBar(content: Text('Failed to load packing data')),
       );
     }
   }
@@ -90,9 +93,10 @@ class _PackingListScreenState extends State<PackingListScreen> {
 
       setState(() => isSaving = false);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Packing list saved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Packing list saved')));
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
 
@@ -101,6 +105,61 @@ class _PackingListScreenState extends State<PackingListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to save packing list')),
       );
+    }
+  }
+
+  Future<void> deleteTrip() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: bgColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        title: Text(
+          'Delete trip?',
+          style: GoogleFonts.poppins(
+            color: darkBlue,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          'This will permanently delete "${widget.trip.name}" and its packing list.',
+          style: GoogleFonts.poppins(
+            color: darkBlue,
+            fontSize: 13,
+            height: 1.45,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: primaryColor),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.poppins(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await TripService().deleteTrip(widget.trip.id);
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to delete trip')));
     }
   }
 
@@ -174,6 +233,15 @@ class _PackingListScreenState extends State<PackingListScreen> {
     });
   }
 
+  int get checkedCount => items.where((item) => item.isChecked).length;
+
+  bool get isPreviewOnly => widget.trip.hasEnded;
+
+  double get progressValue {
+    if (items.isEmpty) return 0;
+    return checkedCount / items.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     final groupedItems = groupItemsByCategory();
@@ -182,51 +250,47 @@ class _PackingListScreenState extends State<PackingListScreen> {
       backgroundColor: bgColor,
       body: SafeArea(
         child: isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+                child: CircularProgressIndicator(color: primaryColor),
+              )
             : Column(
                 children: [
-                  _header(),
-
+                  _topBar(),
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 26,
-                        vertical: 18,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _weatherCard(),
-
-                          const SizedBox(height: 26),
-
-                          if (items.isEmpty)
-                            Center(
-                              child: Text(
-                                'No packing recommendations found.',
-                                style: GoogleFonts.poppins(
-                                  color: darkBlue,
-                                  fontSize: 14,
+                    child: RefreshIndicator(
+                      color: primaryColor,
+                      onRefresh: loadPackingData,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(24, 10, 24, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _tripHero(),
+                            const SizedBox(height: 16),
+                            _weatherCard(),
+                            const SizedBox(height: 16),
+                            _progressCard(),
+                            const SizedBox(height: 22),
+                            if (items.isEmpty)
+                              const _EmptyPackingCard()
+                            else
+                              ...groupedItems.entries.map(
+                                (entry) => PackingCategorySection(
+                                  title: formatCategoryTitle(entry.key),
+                                  items: entry.value,
+                                  isReadOnly: isPreviewOnly,
+                                  onChecked: toggleChecked,
+                                  onIncrement: increment,
+                                  onDecrement: decrement,
                                 ),
                               ),
-                            )
-                          else
-                            ...groupedItems.entries.map(
-                              (entry) => PackingCategorySection(
-                                title: formatCategoryTitle(entry.key),
-                                items: entry.value,
-                                onChecked: toggleChecked,
-                                onIncrement: increment,
-                                onDecrement: decrement,
-                              ),
-                            ),
-
-                          const SizedBox(height: 24),
-                        ],
+                            const SizedBox(height: 16),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-
                   _bottomSaveBar(),
                 ],
               ),
@@ -234,45 +298,99 @@ class _PackingListScreenState extends State<PackingListScreen> {
     );
   }
 
-  Widget _header() {
+  Widget _topBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+      padding: const EdgeInsets.fromLTRB(12, 12, 14, 8),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: darkBlue,
+          IconButton.filled(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            color: darkBlue,
+            style: IconButton.styleFrom(
+              backgroundColor: cardColor,
+              fixedSize: const Size(44, 44),
             ),
             onPressed: () => Navigator.pop(context, true),
           ),
+          const Spacer(),
+          if (!isPreviewOnly)
+            IconButton.filled(
+              icon: const Icon(Icons.delete_outline_rounded),
+              color: Colors.red,
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.white.withValues(alpha: 0.72),
+                fixedSize: const Size(44, 44),
+              ),
+              onPressed: deleteTrip,
+            ),
+          if (isPreviewOnly) const SizedBox(width: 44),
+        ],
+      ),
+    );
+  }
 
-          const SizedBox(width: 4),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+  Widget _tripHero() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: darkBlue,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: darkBlue.withValues(alpha: 0.16),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.luggage_outlined, color: softMint),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
                   widget.trip.name,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
-                    color: darkBlue,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    fontSize: 23,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                Text(
-                  '${widget.trip.destination} • ${widget.trip.durationDays} days',
-                  style: GoogleFonts.poppins(
-                    color: primaryColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _HeroChip(
+                icon: Icons.place_outlined,
+                label: widget.trip.destination,
+              ),
+              _HeroChip(
+                icon: Icons.calendar_today_outlined,
+                label: '${widget.trip.durationDays} days',
+              ),
+              _HeroChip(
+                icon: Icons.business_center_outlined,
+                label: _formatOption(widget.trip.tripType),
+              ),
+            ],
           ),
         ],
       ),
@@ -280,60 +398,143 @@ class _PackingListScreenState extends State<PackingListScreen> {
   }
 
   Widget _weatherCard() {
+    final temperature = weather?.temperature;
+    final humidity = weather?.humidity;
+    final windSpeed = weather?.windSpeed;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: darkBlue.withOpacity(0.15)),
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            weatherIcon(),
-            size: 48,
-            color: primaryColor,
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(weatherIcon(), size: 30, color: primaryColor),
           ),
-
-          const SizedBox(width: 16),
-
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   weatherTitle(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
                     color: darkBlue,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                Text(
-                  weather?.temperature == null
-                      ? 'Temperature unavailable'
-                      : '${weather!.temperature!.toStringAsFixed(1)}°C',
-                  style: GoogleFonts.poppins(
-                    color: darkBlue,
-                    fontSize: 26,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-
-                const SizedBox(height: 4),
-
+                const SizedBox(height: 3),
                 Text(
-                  'For ${widget.trip.destination}',
+                  weather == null
+                      ? 'Could not load weather for ${widget.trip.destination}'
+                      : 'Current weather for ${widget.trip.destination}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.poppins(
-                    color: darkBlue.withOpacity(0.7),
-                    fontSize: 12,
+                    color: darkBlue.withValues(alpha: 0.62),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (humidity != null)
+                      _WeatherMetric(
+                        icon: Icons.water_drop_outlined,
+                        label: '$humidity%',
+                      ),
+                    if (windSpeed != null)
+                      _WeatherMetric(
+                        icon: Icons.air_rounded,
+                        label: '${windSpeed.toStringAsFixed(1)} m/s',
+                      ),
+                    if (weather?.fetchedAt != null)
+                      _WeatherMetric(
+                        icon: Icons.update_rounded,
+                        label: _formatFetchedAt(weather!.fetchedAt!),
+                      ),
+                  ],
+                ),
               ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            temperature == null ? '--' : '${temperature.toStringAsFixed(1)} C',
+            style: GoogleFonts.poppins(
+              color: darkBlue,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatFetchedAt(DateTime fetchedAt) {
+    final local = fetchedAt.toLocal();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Widget _progressCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.68),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: softMint),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                isPreviewOnly ? 'Packed preview' : 'Packing progress',
+                style: GoogleFonts.poppins(
+                  color: darkBlue,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$checkedCount/${items.length}',
+                style: GoogleFonts.poppins(
+                  color: primaryColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: LinearProgressIndicator(
+              value: progressValue,
+              minHeight: 9,
+              backgroundColor: cardColor,
+              color: primaryColor,
             ),
           ),
         ],
@@ -342,31 +543,58 @@ class _PackingListScreenState extends State<PackingListScreen> {
   }
 
   Widget _bottomSaveBar() {
+    if (isPreviewOnly) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 22),
+        decoration: BoxDecoration(
+          color: bgColor,
+          boxShadow: [
+            BoxShadow(
+              color: darkBlue.withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, -8),
+            ),
+          ],
+        ),
+        child: Container(
+          width: double.infinity,
+          height: 54,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: softMint),
+          ),
+          child: Text(
+            'Preview only',
+            style: GoogleFonts.poppins(
+              color: darkBlue,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(26, 12, 26, 22),
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 22),
       decoration: BoxDecoration(
         color: bgColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, -4),
+            color: darkBlue.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, -8),
           ),
         ],
       ),
       child: SizedBox(
         width: double.infinity,
-        height: 52,
-        child: ElevatedButton(
+        height: 54,
+        child: ElevatedButton.icon(
           onPressed: isSaving ? null : savePackingList,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: darkBlue,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-            ),
-          ),
-          child: isSaving
+          icon: isSaving
               ? const SizedBox(
                   height: 18,
                   width: 18,
@@ -375,15 +603,152 @@ class _PackingListScreenState extends State<PackingListScreen> {
                     color: Colors.white,
                   ),
                 )
-              : Text(
-                  'Save packing list',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              : const Icon(Icons.check_rounded),
+          label: Text(
+            isSaving ? 'Saving...' : 'Save packing list',
+            style: GoogleFonts.poppins(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: darkBlue,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+          ),
         ),
+      ),
+    );
+  }
+
+  String _formatOption(String value) {
+    return value
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1);
+        })
+        .join(' ');
+  }
+}
+
+class _HeroChip extends StatelessWidget {
+  const _HeroChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _PackingListScreenState.softMint, size: 16),
+          const SizedBox(width: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 150),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeatherMetric extends StatelessWidget {
+  const _WeatherMetric({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _PackingListScreenState.primaryColor, size: 14),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: _PackingListScreenState.darkBlue,
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyPackingCard extends StatelessWidget {
+  const _EmptyPackingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: _PackingListScreenState.cardColor,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.inventory_2_outlined,
+            color: _PackingListScreenState.primaryColor,
+            size: 42,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No packing recommendations found',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: _PackingListScreenState.darkBlue,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Try saving the trip again or checking the recommendation service.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: _PackingListScreenState.darkBlue.withValues(alpha: 0.62),
+              fontSize: 12,
+              height: 1.45,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

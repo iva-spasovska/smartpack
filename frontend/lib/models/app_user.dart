@@ -5,6 +5,7 @@ class AppUser {
   final String? gender;
   final String? dateOfBirth;
   final int? age;
+  final String? profilePhotoUrl;
 
   AppUser({
     required this.id,
@@ -13,6 +14,7 @@ class AppUser {
     this.gender,
     this.dateOfBirth,
     this.age,
+    this.profilePhotoUrl,
   });
 
   factory AppUser.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class AppUser {
       gender: json['gender'],
       dateOfBirth: json['date_of_birth'],
       age: json['age'],
+      profilePhotoUrl: json['profile_photo_url'],
     );
   }
 }

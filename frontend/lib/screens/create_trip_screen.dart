@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/trip.dart';
+import '../services/location_service.dart';
 import '../services/trip_service.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/primary_button.dart';
@@ -23,26 +24,24 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   final tripNameController = TextEditingController();
 
   DateTime? startDate;
-  int durationDays = 1;
+  DateTime? endDate;
   String? luggageType;
   String? tripType;
 
   bool isLoading = false;
+  bool isLocating = false;
 
-  final List<String> luggageOptions = [
-    'Backpack',
-    'Carry-on',
-    'Suitcase',
-    'Large suitcase',
+  final List<Map<String, String>> luggageOptions = [
+    {'label': 'Backpack', 'value': 'backpack'},
+    {'label': 'Small Suitcase (≤ 10kg)', 'value': 'small_suitcase'},
+    {'label': 'Large Suitcase (> 10kg)', 'value': 'large_suitcase'},
   ];
 
-  final List<String> tripTypeOptions = [
-    'Business',
-    'Vacation',
-    'Beach',
-    'Adventure',
-    'City break',
-    'Winter',
+  final List<Map<String, String>> tripTypeOptions = [
+    {'label': 'City', 'value': 'city'},
+    {'label': 'Beach', 'value': 'beach'},
+    {'label': 'Mountain', 'value': 'mountain'},
+    {'label': 'Business', 'value': 'business'},
   ];
 
   @override
@@ -61,7 +60,28 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     );
 
     if (picked != null) {
-      setState(() => startDate = picked);
+      setState(() {
+        startDate = picked;
+        // reset end date if it's before the new start date
+        if (endDate != null && endDate!.isBefore(picked)) {
+          endDate = null;
+        }
+      });
+    }
+  }
+
+  Future<void> pickEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: startDate != null
+          ? startDate!.add(const Duration(days: 1))
+          : DateTime.now().add(const Duration(days: 1)),
+      firstDate: startDate ?? DateTime.now(),
+      lastDate: DateTime(2035),
+    );
+
+    if (picked != null) {
+      setState(() => endDate = picked);
     }
   }
 
@@ -76,6 +96,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   Future<void> handlePackMe() async {
     if (destinationController.text.trim().isEmpty ||
         startDate == null ||
+        endDate == null ||
         luggageType == null ||
         tripType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -95,9 +116,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
           : tripNameController.text.trim(),
       destination: destination,
       startDate: formatDateForBackend(startDate!),
-      durationDays: durationDays,
-      luggageType: luggageType,
-      tripType: tripType,
+      endDate: formatDateForBackend(endDate!),
+      durationDays: 0,
+      luggageType: luggageType!,
+      tripType: tripType!,
     );
 
     try {
@@ -107,23 +129,47 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
 
       setState(() => isLoading = false);
 
-      await Navigator.pushReplacement(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => PackingListScreen(
-            trip: createdTrip,
-            readOnlyExistingTrip: false,
+              trip: createdTrip,
+              readOnlyExistingTrip: false
           ),
         ),
       );
+      if (!mounted) return;
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
 
       setState(() => isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to create trip')),
+          const SnackBar(content: Text('Failed to create trip')),
       );
+    }
+  }
+
+  Future<void> fillCurrentLocation() async {
+    setState(() => isLocating = true);
+
+    try {
+      final label = await LocationService().currentDestinationLabel();
+
+      if (!mounted) return;
+
+      destinationController.text = label;
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not get your current location')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isLocating = false);
+      }
     }
   }
 
@@ -170,27 +216,56 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 20),
 
               AppTextField(
                 controller: destinationController,
                 hint: 'Destination, e.g. Vienna',
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 6),
+
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: isLocating ? null : fillCurrentLocation,
+                  icon: isLocating
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.my_location_rounded, size: 18),
+                  label: Text(
+                    isLocating ? 'Finding location...' : 'Use my location',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+                  ),
+                  style: TextButton.styleFrom(foregroundColor: primaryColor),
+                ),
+              ),
+
+              const SizedBox(height: 6),
 
               AppTextField(
                 controller: tripNameController,
-                hint: 'Trip name optional',
+                hint: 'Trip name (optional)',
               ),
 
               const SizedBox(height: 16),
 
-              _datePickerField(),
+              _datePickerField(
+                hint: 'Departure date',
+                date: startDate,
+                onTap: pickStartDate,
+              ),
 
               const SizedBox(height: 16),
 
-              _durationSelector(),
+              _datePickerField(
+                hint: 'Return date',
+                date: endDate,
+                onTap: pickEndDate,
+              ),
 
               const SizedBox(height: 16),
 
@@ -214,7 +289,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
                 },
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 30),
 
               Center(
                 child: PrimaryButton(
@@ -232,78 +307,36 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     );
   }
 
-  Widget _datePickerField() {
+  Widget _datePickerField({
+    required String hint,
+    required DateTime? date,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: pickStartDate,
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.8),
+          color: Colors.white.withValues(alpha: 0.8),
           borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: const Color(0xFFC7DDE8).withValues(alpha: 0.55),
+          ),
         ),
         child: Row(
           children: [
             Expanded(
               child: Text(
-                startDate == null
-                    ? 'Departure date'
-                    : formatDateForUi(startDate!),
+                date == null ? hint : formatDateForUi(date),
                 style: GoogleFonts.poppins(
-                  color: startDate == null ? Colors.grey : darkBlue,
+                  color: date == null ? Colors.grey : darkBlue,
                   fontSize: 15,
                 ),
               ),
             ),
-            const Icon(
-              Icons.calendar_month_rounded,
-              color: darkBlue,
-            ),
+            const Icon(Icons.calendar_month_rounded, color: darkBlue),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _durationSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Duration',
-              style: GoogleFonts.poppins(
-                color: darkBlue,
-                fontSize: 15,
-              ),
-            ),
-          ),
-          IconButton(
-            onPressed: durationDays > 1
-                ? () {
-                    setState(() => durationDays--);
-                  }
-                : null,
-            icon: const Icon(Icons.remove_circle_outline),
-          ),
-          Text(
-            '$durationDays days',
-            style: GoogleFonts.poppins(
-              color: darkBlue,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() => durationDays++);
-            },
-            icon: const Icon(Icons.add_circle_outline),
-          ),
-        ],
       ),
     );
   }
@@ -311,39 +344,34 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
   Widget _dropdownField({
     required String hint,
     required String? value,
-    required List<String> items,
+    required List<Map<String, String>> items,
     required Function(String?) onChanged,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
+        color: Colors.white.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: const Color(0xFFC7DDE8).withValues(alpha: 0.55),
+        ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           hint: Text(
             hint,
-            style: GoogleFonts.poppins(
-              color: Colors.grey,
-              fontSize: 15,
-            ),
+            style: GoogleFonts.poppins(color: Colors.grey, fontSize: 15),
           ),
           isExpanded: true,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: darkBlue,
-          ),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: darkBlue),
           items: items
               .map(
                 (item) => DropdownMenuItem<String>(
-                  value: item.toLowerCase().replaceAll(' ', '_'),
+                  value: item['value'],
                   child: Text(
-                    item,
-                    style: GoogleFonts.poppins(
-                      color: darkBlue,
-                    ),
+                    item['label']!,
+                    style: GoogleFonts.poppins(color: darkBlue),
                   ),
                 ),
               )

@@ -36,4 +36,15 @@ class TripService {
 
     throw Exception('Failed to create trip');
   }
+
+  Future<void> deleteTrip(int tripId) async {
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.tripsUrl}$tripId/'),
+      headers: await ApiClient.authHeaders(),
+    );
+
+    if (response.statusCode != 204) {
+      throw Exception('Failed to delete trip');
+    }
+  }
 }

@@ -17,7 +17,7 @@ class AuthService {
         'username': username,
         'password': password,
       }),
-    );
+    ).timeout(ApiConfig.connectTimeout);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -49,7 +49,7 @@ class AuthService {
         'gender': gender,
         'date_of_birth': dateOfBirth,
       }),
-    );
+    ).timeout(ApiConfig.connectTimeout);
 
     return response.statusCode == 201 || response.statusCode == 200;
   }

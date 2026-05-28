@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
-import '../services/auth_service.dart';
+import '../providers/auth_provider.dart';
+import '../widgets/app_logo.dart';
+import '../widgets/password_field.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
@@ -13,15 +16,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  static const Color bgColor = Color(0xFF4F8D9C);
-  static const Color fieldColor = Color(0xFFF5EFEB);
-  static const Color buttonColor = Color(0xFFC7DDE8);
-  static const Color textColor = Color(0xFF2F4858);
+  static const Color bgColor = Color(0xFFF5EFEB);
+  static const Color teal = Color(0xFF4F8D9C);
+  static const Color darkBlue = Color(0xFF2F4858);
+  static const Color lightBlue = Color(0xFFE8F3F7);
+  static const Color softMint = Color(0xFFC7DDE8);
 
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
-
-  bool isLoading = false;
 
   @override
   void dispose() {
@@ -31,23 +33,32 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> handleLogin() async {
-    if (usernameController.text.trim().isEmpty ||
-        passwordController.text.trim().isEmpty) {
+    final username = usernameController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter username and password')),
       );
       return;
     }
 
-    setState(() => isLoading = true);
+    bool success = false;
 
-    final success = await AuthService().login(
-      username: usernameController.text.trim(),
-      password: passwordController.text.trim(),
-    );
+    try {
+      success = await context.read<AuthProvider>().login(
+        username: username,
+        password: password,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not reach the backend server')),
+      );
+      return;
+    }
 
     if (!mounted) return;
-    setState(() => isLoading = false);
 
     if (success) {
       Navigator.pushReplacement(
@@ -58,9 +69,20 @@ class _LoginScreenState extends State<LoginScreen> {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Account not found'),
-          content: const Text(
-            'This user does not exist or the password is incorrect. Please create an account.',
+          backgroundColor: bgColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: Text(
+            'Login failed',
+            style: GoogleFonts.poppins(
+              color: darkBlue,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          content: Text(
+            'Username or password is incorrect. Please try again or create an account.',
+            style: GoogleFonts.poppins(color: darkBlue, fontSize: 13),
           ),
           actions: [
             TextButton(
@@ -71,7 +93,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   MaterialPageRoute(builder: (_) => const RegisterScreen()),
                 );
               },
-              child: const Text('Register'),
+              child: Text(
+                'Create account',
+                style: GoogleFonts.poppins(
+                  color: teal,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ],
         ),
@@ -81,100 +109,110 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<AuthProvider>().isLoading;
+
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 38),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight:
+                  MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.vertical -
+                  46,
+            ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'Welcome back',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w500,
-                  ),
+                _BrandHeader(
+                  title: 'Welcome back',
+                  subtitle: 'Sign in and get your next trip organized.',
                 ),
-                const SizedBox(height: 42),
-                _inputField(
-                  controller: usernameController,
-                  hint: 'Username',
-                ),
-                const SizedBox(height: 18),
-                _inputField(
-                  controller: passwordController,
-                  hint: 'Password',
-                  obscureText: true,
-                ),
-                const SizedBox(height: 14),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    'Forgot password?',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 48),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: buttonColor,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
+                const SizedBox(height: 40),
+                _AuthCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _inputField(
+                        controller: usernameController,
+                        hint: 'Username',
+                        icon: Icons.alternate_email_rounded,
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 34),
-                    ),
-                    child: isLoading
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            'Sign In',
+                      const SizedBox(height: 14),
+                      PasswordField(
+                        controller: passwordController,
+                        hint: 'Password',
+                        fieldColor: Colors.white.withValues(alpha: 0.82),
+                        textColor: darkBlue,
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Password reset coming soon'),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Forgot password?',
                             style: GoogleFonts.poppins(
-                              color: textColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
+                              color: teal,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 54,
+                        child: ElevatedButton.icon(
+                          onPressed: isLoading ? null : handleLogin,
+                          icon: isLoading
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.login_rounded),
+                          label: Text(
+                            isLoading ? 'Signing in...' : 'Sign in',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: darkBlue,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 28),
-                GestureDetector(
+                const SizedBox(height: 20),
+                _AuthSwitch(
+                  text: "Don't have an account?",
+                  action: 'Create one',
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const RegisterScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const RegisterScreen()),
                     );
                   },
-                  child: RichText(
-                    text: TextSpan(
-                      style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        fontSize: 12,
-                      ),
-                      children: const [
-                        TextSpan(text: "Don't have an account? "),
-                        TextSpan(
-                          text: 'Sign up',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               ],
             ),
@@ -187,27 +225,146 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _inputField({
     required TextEditingController controller,
     required String hint,
-    bool obscureText = false,
+    required IconData icon,
   }) {
     return TextField(
       controller: controller,
-      obscureText: obscureText,
-      style: GoogleFonts.poppins(color: textColor),
+      style: GoogleFonts.poppins(color: darkBlue, fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         filled: true,
-        fillColor: fieldColor,
+        fillColor: Colors.white.withValues(alpha: 0.82),
+        prefixIcon: Icon(icon, color: teal, size: 20),
         hintText: hint,
-        hintStyle: GoogleFonts.poppins(
-          color: Colors.grey,
-          fontSize: 15,
+        hintStyle: GoogleFonts.poppins(color: Colors.grey, fontSize: 15),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: softMint),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: teal, width: 1.4),
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: 14,
+          horizontal: 18,
+          vertical: 15,
+        ),
+      ),
+    );
+  }
+}
+
+class _BrandHeader extends StatelessWidget {
+  const _BrandHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppLogo(),
+        const SizedBox(height: 30),
+        Text(
+          title,
+          style: GoogleFonts.poppins(
+            color: _LoginScreenState.darkBlue,
+            fontSize: 32,
+            height: 1.1,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          style: GoogleFonts.poppins(
+            color: _LoginScreenState.teal,
+            fontSize: 14,
+            height: 1.45,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AuthCard extends StatelessWidget {
+  const _AuthCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _LoginScreenState.lightBlue,
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: _LoginScreenState.darkBlue.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _AuthSwitch extends StatelessWidget {
+  const _AuthSwitch({
+    required this.text,
+    required this.action,
+    required this.onTap,
+  });
+
+  final String text;
+  final String action;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.62),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _LoginScreenState.softMint),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Flexible(
+              child: Text(
+                '$text ',
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  color: _LoginScreenState.darkBlue.withValues(alpha: 0.72),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Text(
+              action,
+              style: GoogleFonts.poppins(
+                color: _LoginScreenState.teal,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
       ),
     );
