@@ -18,13 +18,14 @@ class PackingRecommendation {
   });
 
   factory PackingRecommendation.fromJson(Map<String, dynamic> json) {
-    final itemsJson = json['recommended_items'] as List<dynamic>? ?? [];
+    final rawItems = json['recommended_items'];
+    final itemsJson = rawItems is List ? rawItems : [];
 
     return PackingRecommendation(
       id: json['id'] ?? 0,
       trip: json['trip'] ?? 0,
       recommendedItems: itemsJson
-          .map((item) => PackingItem.fromJson(item))
+          .map((item) => PackingItem.fromJson(item as Map<String, dynamic>))
           .toList(),
       confidenceScore: _toDouble(json['confidence_score']) ?? 0,
       modelVersion: json['model_version'] ?? '',

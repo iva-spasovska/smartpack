@@ -15,75 +15,99 @@ class TripCard extends StatelessWidget {
 
   static const Color darkBlue = Color(0xFF2F4858);
   static const Color accent = Color(0xFF4F8D9C);
+  static const Color softBlue = Color(0xFFE8F3F7);
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: darkBlue,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: softBlue),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: darkBlue.withValues(alpha: 0.06),
+              blurRadius: 14,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.location_on_outlined,
-              color: accent,
-              size: 28,
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: softBlue,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                Icons.location_on_outlined,
+                color: accent,
+                size: 25,
+              ),
             ),
-
             const SizedBox(width: 12),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     trip.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
+                      color: darkBlue,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-
-                  const SizedBox(height: 8),
-
-                  Text(
-                    '${trip.startDate} • ${trip.durationDays} days',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
-                  ),
-
-                  const SizedBox(height: 2),
-
+                  const SizedBox(height: 5),
                   Text(
                     trip.destination,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
-                      color: Colors.white70,
+                      color: darkBlue.withValues(alpha: 0.66),
                       fontSize: 12,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
             ),
-
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${trip.durationDays} days',
+                  style: GoogleFonts.poppins(
+                    color: accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  trip.startDate,
+                  style: GoogleFonts.poppins(
+                    color: darkBlue.withValues(alpha: 0.5),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 8),
             const Icon(
               Icons.arrow_forward_ios_rounded,
-              color: Colors.white54,
-              size: 18,
+              color: darkBlue,
+              size: 15,
             ),
           ],
         ),
