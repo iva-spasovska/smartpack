@@ -306,95 +306,95 @@ The screenshots below follow the same order as a real user flow through the appl
 
 The user starts on the welcome screen and can choose to register or log in.
 
-<img src="docs/screenshots/01-welcome-screen.jpg" alt="Welcome screen" width="40%">
+<img src="docs/screenshots/01-welcome-screen.jpg" alt="Welcome screen" width="30%">
 
 #### 2. Register Screen
 
 A new user creates an account by entering account and profile information.
 
-<img src="docs/screenshots/02-register-screen.jpg" alt="Register screen" width="40%">
+<img src="docs/screenshots/02-register-screen.jpg" alt="Register screen" width="30%">
 
 #### 3. Login Screen
 
 An existing user signs in. After successful authentication, the JWT tokens are stored locally and used for protected requests.
 
-<img src="docs/screenshots/03-login-screen.jpg" alt="LogIn screen" width="40%">
+<img src="docs/screenshots/03-login-screen.jpg" alt="LogIn screen" width="30%">
 
 #### 4. Home Screen
 
 The home screen works as the main dashboard. It shows the logged-in user, quick trip actions, upcoming trips, and access to previous trips and profile.
 
-<img src="docs/screenshots/04-home-top.jpg" alt="Home top screen" width="40%">
+<img src="docs/screenshots/04-home-top.jpg" alt="Home top screen" width="30%">
 
-<img src="docs/screenshots/05-home-bottom.jpg" alt="Home bottom screen" width="40%">
+<img src="docs/screenshots/05-home-bottom.jpg" alt="Home bottom screen" width="30%">
 
 #### 5. Previous Trips
 
 The previous trips screen lists trips whose return date has passed. These trips can be opened as saved packing-list previews.
 
-<img src="docs/screenshots/06-previous-trips.jpg" alt="Previous trips screen" width="40%">
+<img src="docs/screenshots/06-previous-trips.jpg" alt="Previous trips screen" width="30%">
 
 #### 6. Create Trip
 
 The user enters trip details such as destination, trip name, departure date, return date, luggage type and trip type.
 
-<img src="docs/screenshots/07-create-trip-empty.jpg" alt="Create trip emtpy screen" width="40%">
+<img src="docs/screenshots/07-create-trip-empty.jpg" alt="Create trip emtpy screen" width="30%">
 
 When the user taps "Use my location", Android asks for location permission.
 
-<img src="docs/screenshots/08-location-permission.jpg" alt="Location permission screen" width="40%">
+<img src="docs/screenshots/08-location-permission.jpg" alt="Location permission screen" width="30%">
 
 After permission is allowed, the destination field is populated using the current device location and reverse geocoding.
 
-<img src="docs/screenshots/09-create-trip-current-location.jpg" alt="Current location screen" width="40%">
+<img src="docs/screenshots/09-create-trip-current-location.jpg" alt="Current location screen" width="30%">
 
 #### 7. Packing List
 
 After creating a trip, the app opens the generated packing list. The top section shows trip information and weather data retrieved through the backend Weather API integration.
 
-<img src="docs/screenshots/10-packing-list-top-weather.jpg" alt="Packing list top weather screen" width="40%">
+<img src="docs/screenshots/10-packing-list-top-weather.jpg" alt="Packing list top weather screen" width="30%">
 
 The packing list is grouped into categories and allows the user to check packed items and adjust quantities.
 
-<img src="docs/screenshots/11-packing-list-categories.jpg" alt="Packing list categories screen" width="40%">
+<img src="docs/screenshots/11-packing-list-categories.jpg" alt="Packing list categories screen" width="30%">
 
 The user can save the packing list so the selected items and quantities are persisted.
 
-<img src="docs/screenshots/12-packing-list-save.jpg" alt="Packing list save screen" width="40%">
+<img src="docs/screenshots/12-packing-list-save.jpg" alt="Packing list save screen" width="30%">
 
 #### 8. Profile
 
 The profile screen shows the user's account data, profile photo, trip statistics and recent trips.
 
-<img src="docs/screenshots/13-profile-top.jpg" alt="Profile top screen" width="40%">
+<img src="docs/screenshots/13-profile-top.jpg" alt="Profile top screen" width="30%">
 
-<img src="docs/screenshots/14-profile-details.jpg" alt="Profile details screen" width="40%">
+<img src="docs/screenshots/14-profile-details.jpg" alt="Profile details screen" width="30%">
 
 The recent trips dropdown lets the user select and open one of their trips from the profile screen.
 
-<img src="docs/screenshots/15-profile-recent-trip-dropdown.jpg" alt="Recent trip dropdown screen" width="40%">
+<img src="docs/screenshots/15-profile-recent-trips-dropdown.jpg" alt="Recent trips dropdown screen" width="30%">
 
 #### 9. Edit Profile
 
 The edit profile bottom sheet allows the user to update profile information such as username, gender and date of birth.
 
-<img src="docs/screenshots/16-edit-profile-sheet.jpg" alt="Edit profile screen" width="40%">
+<img src="docs/screenshots/16-edit-profile-sheet.jpg" alt="Edit profile screen" width="30%">
 
 #### 10. Camera Permission and Profile Photo
 
 When the user taps the profile photo area, Android asks for camera permission.
 
-<img src="docs/screenshots/17-camera-permission.jpg" alt="Camera permission screen" width="40%">
+<img src="docs/screenshots/17-camera-permission.jpg" alt="Camera permission screen" width="30%">
 
 After taking a new photo, the app uploads it to the backend and displays the updated profile image.
 
-<img src="docs/screenshots/18-profile-updated-photo.jpg" alt="Profile updated photo screen" width="40%">
+<img src="docs/screenshots/18-profile-updated-photo.jpg" alt="Profile updated photo screen" width="30%">
 
 #### 11. Delete Trip Popup
 
 From the packing list screen, the user can delete a trip. A confirmation popup prevents accidental deletion.
 
-<img src="docs/screenshots/19-delete-trip-popup.jpg" alt="Delete trip popup screen" width="40%">
+<img src="docs/screenshots/19-delete-trip-popup.jpg" alt="Delete trip popup screen" width="30%">
 
 
 ## Main User Workflow
